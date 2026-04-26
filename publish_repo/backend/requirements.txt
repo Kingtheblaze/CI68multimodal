@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+httpx
+Pillow
+langchain
+langchain-google-genai
+google-generativeai
+weaviate-client>=4.5.4
+neo4j
+python-multipart
+python-magic
+pypdf
+python-docx

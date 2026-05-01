@@ -106,20 +106,36 @@ async def search_multimodal(
         graph_service = get_graph_service()
         document_service = get_document_service()
 
+        ai_service = get_ai_service()
         results = []
         image_b64 = None
+        temp_img_path = None
 
         if image is not None:
             image_bytes = await image.read()
             image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            temp_img_path = "temp_search_img.png"
+            with open(temp_img_path, "wb") as f:
+                f.write(image_bytes)
 
-        if vector_service is not None and (query or image_b64):
+        # 1. Primary: Vector Search
+        if vector_service is not None and vector_service.enabled and (query or image_b64):
             results = vector_service.search_multimodal(
                 text=query,
                 image_b64=image_b64,
             )
 
-        if not results and graph_service and query and not image_b64:
+        # 2. Fallback: AI Vision + Graph Search
+        # If vector search failed or is disabled, and we have an image
+        if not results and ai_service and ai_service.enabled and temp_img_path:
+            print("Vector search empty/disabled. Falling back to AI Vision description...")
+            image_description = await ai_service.get_multimodal_description(temp_img_path)
+            if graph_service:
+                print(f"Searching graph with AI description: {image_description[:50]}...")
+                results = graph_service.search_products(image_description)
+
+        # 3. Text-only Fallback
+        if not results and graph_service and query:
             results = graph_service.search_products(query)
 
         enriched = []
@@ -127,11 +143,15 @@ async def search_multimodal(
             context = graph_service.get_related_context(res["product_id"]) if graph_service else None
             enriched.append({**res, "result_type": "product", "graph_context": context})
 
+        # 4. Document Processing
         if document is not None and document_service is not None:
             document_bytes = await document.read()
             document_text = document_service.extract_text(document.filename or "document", document_bytes)
             document_results = document_service.find_relevant_chunks(query or "", document_text)
             enriched.extend(document_results)
+
+        if temp_img_path and os.path.exists(temp_img_path):
+            os.remove(temp_img_path)
 
         return enriched
     except HTTPException:

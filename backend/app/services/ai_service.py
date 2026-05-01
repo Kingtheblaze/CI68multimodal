@@ -16,7 +16,19 @@ class AIService:
             return
 
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-pro')
+        
+        # Auto-detect the best available model
+        try:
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    self.model_name = m.name
+                    self.model = genai.GenerativeModel(self.model_name)
+                    print(f"Successfully initialized with model: {self.model_name}")
+                    break
+        except Exception as e:
+            print(f"Error listing models: {e}")
+            # Fallback to a common name just in case
+            self.model = genai.GenerativeModel('gemini-1.5-flash')
 
     async def generate_response(self, prompt: str, image_path: str = None):
         if not self.enabled or self.model is None:

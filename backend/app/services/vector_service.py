@@ -15,26 +15,24 @@ class VectorService:
         self.enabled = False
         print(f"Connecting to Weaviate at host: {host_name}")
 
-        for i in range(5):
+        for i in range(10):  # Increased attempts
             try:
-                self.client = weaviate.connect_to_custom(
-                    http_host=host_name,
-                    http_port=8080,
-                    http_secure=False,
-                    grpc_host=host_name,
-                    grpc_port=50051,
-                    grpc_secure=False,
+                # Use connect_to_local but specify the Docker service name as the host
+                self.client = weaviate.connect_to_local(
+                    host=host_name,
+                    port=8080,
+                    grpc_port=50051
                 )
                 if self.client.is_ready():
                     self.enabled = True
-                    print("Successfully connected to Weaviate!")
+                    print(f"Successfully connected to Weaviate at {host_name}!")
                     break
             except Exception as e:
-                print(f"Connection attempt {i+1} failed. Retrying in 5s... Error: {e}")
-                time.sleep(5)
+                print(f"Connection attempt {i+1} failed. Error: {e}")
+                time.sleep(3)
 
         if not self.enabled:
-            print("Weaviate is unavailable. Vector search will run in disabled mode.")
+            print("CRITICAL: Weaviate is unavailable after 10 attempts. Vector search is DISABLED.")
             return
 
         self._setup_schema()

@@ -113,20 +113,25 @@ class GraphService:
 
     @staticmethod
     def _search_products_tx(tx, query_text, limit):
+        # Split query into words to make it more fuzzy/keyword-based
+        words = [w.lower() for w in query_text.split() if len(w) > 2]
+        if not words and query_text:
+            words = [query_text.lower()]
+            
         query = (
             "MATCH (p:Product) "
             "OPTIONAL MATCH (p)-[:BELONGS_TO]->(c:Category) "
             "OPTIONAL MATCH (p)-[:MANUFACTURED_BY]->(b:Brand) "
-            "WITH p, c, b, toLower($query_text) AS q "
-            "WHERE q = '' "
-            "   OR toLower(p.name) CONTAINS q "
-            "   OR toLower(coalesce(p.description, '')) CONTAINS q "
-            "   OR toLower(coalesce(c.name, '')) CONTAINS q "
-            "   OR toLower(coalesce(b.name, '')) CONTAINS q "
+            "WITH p, c, b, $words AS keywords "
+            "WHERE size(keywords) = 0 "
+            "   OR any(word IN keywords WHERE toLower(p.name) CONTAINS word) "
+            "   OR any(word IN keywords WHERE toLower(coalesce(p.description, '')) CONTAINS word) "
+            "   OR any(word IN keywords WHERE toLower(coalesce(c.name, '')) CONTAINS word) "
+            "   OR any(word IN keywords WHERE toLower(coalesce(b.name, '')) CONTAINS word) "
             "RETURN p.id AS product_id, p.name AS name, coalesce(p.description, '') AS description "
             "LIMIT $limit"
         )
-        result = tx.run(query, query_text=query_text, limit=limit)
+        result = tx.run(query, words=words, limit=limit)
         return [record.data() for record in result]
 
 graph_service = GraphService()

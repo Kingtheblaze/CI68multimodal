@@ -5,6 +5,7 @@ python-dotenv
 httpx
 Pillow
 langchain
+langchain-text-splitters
 langchain-google-genai
 google-generativeai
 weaviate-client>=4.5.4

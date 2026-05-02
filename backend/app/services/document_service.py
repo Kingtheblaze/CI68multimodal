@@ -58,10 +58,14 @@ class DocumentService:
         return [
             {
                 "product_id": f"document_chunk_{idx}",
-                "name": f"Document Match {position + 1}",
+                "name": chunk.split('\n')[0][:50] if '\n' in chunk else f"Catalog: {chunk[:30]}...",
                 "description": chunk,
                 "result_type": "document",
-                "graph_context": None,
+                "graph_context": {
+                    "category": "Document Resource",
+                    "brand": "From Uploaded File",
+                    "reviews": ["Extracted from your PDF catalog."]
+                },
             }
             for position, (_, idx, chunk) in enumerate(scored[:limit])
         ]
